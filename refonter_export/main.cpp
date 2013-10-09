@@ -6,7 +6,10 @@
 #include <fstream>
 #include <windows.h>
 
-// For GNU
+#include <gl/gl.h>
+#include <gl/glu.h>
+
+// TODO: For GNU
 //#define PACK_STRUCT( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 // For MSVC
 #define PACK_STRUCT( __Declaration__ ) __pragma( pack(push, 1) ) __Declaration__ __pragma( pack(pop) )
@@ -431,22 +434,23 @@ void delta_encode_points(refonter_font* p_font)
 
 refonter_font* refonter_init_blob(unsigned char* blob)
 {
+	// Transform char pointer
 	refonter_font* p_font = (refonter_font*)blob;
-
 	p_font->chars = (refonter_char*)((uintptr_t)p_font->chars + (uintptr_t)p_font);
 
 	for (int ch = 0; ch < p_font->num_chars; ch++)
 	{
+		// Transform contour pointers
 		refonter_char* p_char = &p_font->chars[ch];
-
 		p_char->contours = (refonter_contour*)((uintptr_t)p_char->contours + (uintptr_t)p_font);
 
 		for (int c = 0; c < p_char->num_contours; c++)
 		{
+			// Transform point pointers
 			refonter_contour* p_contour = &(p_char->contours[c]);
-
 			p_contour->points = (refonter_point*)((uintptr_t)p_contour->points + (uintptr_t)p_font);
 
+			// Delta decode point coords
 			refonter_coord cur_x = 0, cur_y = 0;
 
 			for (int p = 0; p < p_contour->num_points; p++)
@@ -464,14 +468,244 @@ refonter_font* refonter_init_blob(unsigned char* blob)
 	return p_font;
 }
 
+struct refonter_vec3
+{
+	union {
+		struct
+		{
+			double x;
+			double y;
+			double z;
+		};
+		double v[3];
+	};
+};
+
+struct refonter_vertex
+{
+	refonter_vec3 pos;
+	refonter_vec3 normal;
+};
+
+static const unsigned int kMaxVertices = 8*1024*3;
+
+enum
+{
+	kTypeTriangle = 1, //GL_TRIANGLES,
+	kTypeTriangleStrip = 2, //GL_TRIANGLE_STRIP,
+	kTypeTriangleFan = 3, //GL_TRIANGLE_FAN,
+};
+
+struct refonter_tesselation_object
+{
+	refonter_vertex front[kMaxVertices];
+	refonter_vertex side[kMaxVertices];
+	refonter_vertex back[kMaxVertices];
+
+	refonter_vertex storage[kMaxVertices];
+
+	unsigned int num_front;
+	unsigned int num_side;
+	unsigned int num_back;
+	unsigned int num_storage;
+
+	unsigned int state_type;
+	unsigned int state_is_border;
+	unsigned int state_count;
+
+	refonter_vertex h1;
+	refonter_vertex h2;
+
+	GLUtesselator* glu_tess_obj;
+};
+
+double refonter_bezier(double t, double start, double control1, double control2, double end)
+{
+    return              start * (1.0 - t) * (1.0 - t)  * (1.0 - t) 
+           + 3.0 *   control1 * (1.0 - t) * (1.0 - t)  * t 
+           + 3.0 *   control2 * (1.0 - t) * t          * t
+           +              end * t         * t          * t;
+}
+
+refonter_vec3 refonter_bezier(double t, const refonter_vec3& start, const refonter_vec3& control1, const refonter_vec3& control2, const refonter_vec3& end)
+{
+	refonter_vec3 res;
+
+	for (int i = 0; i < 3; i++)
+		res.v[i] = refonter_bezier(t, start.v[i], control1.v[i], control2.v[i], end.v[i]);
+
+	return res;
+}
+
+/*double refonter_bezier_length(const refonter_vec3& start, const refonter_vec3& control_1, const refonter_vec3& control_2, const refonter_vec3& end)
+{
+	refonter_vec3 prev;
+	double length = 0.0;
+
+	for (double t = 0.0; t <= 1.0; t+=1.0/64.0)
+	{
+		if (t > 0.0)
+		{
+			length += refonter_vertex_dist(prev, refonter_bezier(t, start, control_1, control_2, end));
+		}
+	}
+
+	return length;
+}
+*/
+
+
+
+void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtesselator* glu_tess_obj)
+{
+	t.num_front = 0;
+	t.num_side  = 0;
+	t.num_back  = 0;
+
+	t.state_is_border = false;
+	t.state_count = 0;
+
+	t.glu_tess_obj = glu_tess_obj;
+}
+
+void refonter_tesselation_object_add_vertex(refonter_tesselation_object* tess_obj, refonter_vec3 pos, refonter_vec3 normal)
+{
+	refonter_vertex* v = &(tess_obj->storage[tess_obj->num_storage++]);
+	v->pos = pos;
+	v->normal = normal;
+
+	gluTessVertex(tess_obj->glu_tess_obj, (GLdouble*)&pos, (void*)v);
+}
+
+void refonter_tesselation_object_add_bezier(refonter_tesselation_object* tess_obj, refonter_vec3 start, refonter_vec3 control1, refonter_vec3 control2, refonter_vec3 end)
+{
+	/*double length = refonter_bezier_length(start, control1, control2, end);
+
+	unsigned int n = (unsigned int)length / 16; // four subdivisions per point
+
+	for (unsigned int i = 0; i < n; i++)
+	{
+		double v = (double)i/(double)n;
+		
+		
+
+	}*/
+	refonter_tesselation_object_add_vertex(tess_obj, start, refonter_vec3());
+}
+
+void refonter_tesselation_segment_begin(unsigned int type, void* data)
+{
+	refonter_tesselation_object* t = (refonter_tesselation_object*)data;
+
+	t->state_type = type;
+	t->state_count = 0;
+}
+
+/*double quadratic_bezier(double t, double start, double control, double end)
+{
+    return              start * (1.0 - t) * (1.0 - t) 
+           + 2.0 *    control * (1.0 - t) * t
+           +              end * t         * t;
+}
+
+refonter_vec3 quadratic_bezier(double t, const refonter_vec3& start, const refonter_vec3& control, const refonter_vec3& end)
+{
+	refonter_vec3 res;
+
+	for (int i = 0; i < 3; i++)
+		res.v[i] = quadratic_bezier(t, start.v[i], control.v[i], end.v[i]);
+
+	return res;
+}*/
+
+refonter_vec3 refonter_vertex_minus(const refonter_vec3& p1, const refonter_vec3& p2)
+{
+	refonter_vec3 res;
+	res.x = p1.x - p2.x;
+	res.y = p1.y - p2.y;
+	res.z = p1.z - p2.z;
+	return res;
+}
+
+refonter_vec3 refonter_vertex_plus(const refonter_vec3& p1, const refonter_vec3& p2)
+{
+	refonter_vec3 res;
+	res.x = p1.x + p2.x;
+	res.y = p1.y + p2.y;
+	res.z = p1.z + p2.z;
+	return res;
+}
+
+refonter_vec3 refonter_vertex_mid(const refonter_vec3& p1, const refonter_vec3& p2)
+{
+	refonter_vec3 res = refonter_vertex_plus(p1, p2);
+	res.x /= 2;
+	res.y /= 2;
+	res.z /= 2;
+	return res;
+}
+
+void refonter_vertex_zero(refonter_vec3& p)
+{
+	p.x = 0;
+	p.y = 0;
+	p.z = 0;
+}
+
+double refonter_vertex_dist(const refonter_vec3& p1, const refonter_vec3& p2)
+{
+	refonter_vec3 d = refonter_vertex_minus(p1, p2);
+
+	return sqrt(d.x*d.x + d.y*d.y + d.z*d.z);
+}
+
+refonter_vec3 refonter_quadratic_control_to_cubic(const refonter_vec3& p0, const refonter_vec3& p1)
+{
+	refonter_vec3 res = p0;
+	res = refonter_vertex_plus(res, p1);
+	res = refonter_vertex_plus(res, p1);
+	res.x /= 3;
+	res.y /= 3;
+	res.z /= 3;
+	return res;
+}
+
+/*double refonter_quadratic_bezier_length(const refonter_vec3& start, const refonter_vec3& control, const refonter_vec3& end)
+{
+	refonter_vec3 prev, cur;
+	double length = 0.0;
+
+	for (double t = 0.0; t <= 1.0; t+=1.0/64.0)
+	{
+		if (t > 0.0)
+		{
+			length += refonter_vertex_dist(prev, cur = quadratic_bezier(t, start, control, end));
+		}
+
+		prev = cur;
+	}
+
+	return length;
+}*/
+
+refonter_vec3 refonter_vec_from_point(const refonter_point& p)
+{
+	refonter_vec3 res;
+	res.x = p.x;
+	res.y = p.y;
+	res.z = 0;
+
+	return res;
+}
+
 int main()
 {
 	unsigned char* blob;
 	unsigned int blob_size;
 
-	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\DreamMMA.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
+	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\DreamMMA.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\8thCargo.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
-	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
+	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\Feathergraphy2.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\MotorwerkOblique.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\setbackt.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
@@ -490,7 +724,83 @@ int main()
 
 	p_font = refonter_init_blob(blob);
 
+	refonter_tesselation_object* t = (refonter_tesselation_object*)malloc(sizeof(refonter_tesselation_object)*p_font->num_chars);
 
+	//GLUtesselator* tesselator = new gluNewTess();
+	GLUtesselator *tess = gluNewTess();
+
+	for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
+	{
+		refonter_tesselation_object_init(t[ch], tess);
+
+		gluTessBeginPolygon(tess, &t[ch]);
+
+		refonter_char* p_char = &(p_font->chars[ch]);
+
+		for (unsigned int c = 0; c < p_char->num_contours; c++)
+		{
+			gluTessBeginContour(tess);
+
+			refonter_contour* p_contour = &(p_char->contours[c]);
+
+			refonter_point* p_point_start = &(p_contour->points[0]);
+			refonter_point* p_point = p_point_start;
+			refonter_point* p_point_end = &(p_contour->points[p_contour->num_points]);
+
+			// push start point
+
+			while (p_point < p_point_end)
+			{
+				if (p_point[1].flags & kPointTypeOn)
+				{
+					refonter_vec3 pos = refonter_vec_from_point(*p_point);
+					refonter_vec3 d = refonter_vertex_minus(refonter_vec_from_point(p_point[1]), refonter_vec_from_point(p_point[0]));
+					refonter_vec3 normal;
+					normal.x = d.y;
+					normal.y = -d.x;
+					normal.z = 0;
+
+					refonter_tesselation_object_add_vertex(&t[ch], pos, normal);
+					p_point++;
+				}
+				else if (p_point[1].flags & kPointTypeOffConic)
+				{
+					refonter_vec3 start_pos = refonter_vec_from_point(*p_point);
+
+					while (p_point[2].flags & kPointTypeOffConic)
+					{
+						refonter_vec3 end_pos = refonter_vertex_mid(refonter_vec_from_point(p_point[1]), refonter_vec_from_point(p_point[2]));
+						refonter_vec3 control = refonter_vec_from_point(p_point[1]);
+
+						refonter_tesselation_object_add_bezier(&t[ch], start_pos, refonter_quadratic_control_to_cubic(start_pos, control), refonter_quadratic_control_to_cubic(end_pos, control), end_pos);
+
+						start_pos = end_pos;
+						p_point++;
+					}
+
+					refonter_vec3 end_pos = refonter_vec_from_point(p_point[2]);
+					refonter_vec3 control = refonter_vec_from_point(p_point[1]);
+
+					refonter_tesselation_object_add_bezier(&t[ch], start_pos, refonter_quadratic_control_to_cubic(start_pos, control), refonter_quadratic_control_to_cubic(end_pos, control), end_pos);
+
+					start_pos = end_pos;
+					p_point+=2;
+				}
+				else if (p_point[1].flags & kPointTypeOffCubic)
+				{
+					refonter_tesselation_object_add_bezier(&t[ch], refonter_vec_from_point(p_point[0]), refonter_vec_from_point(p_point[1]), refonter_vec_from_point(p_point[2]), refonter_vec_from_point(p_point[3]));
+					p_point+=4;
+				}
+
+			}
+
+			gluTessEndContour(tess);
+		}
+
+		gluTessEndPolygon(tess);
+	}
+
+	gluDeleteTess(tess);
 
 	/*FT_Library ftLibrary;
 	FT_Face    ftFace;
