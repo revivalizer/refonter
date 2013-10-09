@@ -55,6 +55,7 @@ refonter_vec3 quadratic_bezier(double t, const refonter_vec3& start, const refon
 #include "refonter.h"
 #include "refonter_export.h"
 
+#include <iomanip>
 #include <iostream>
 #include <fstream>
 
@@ -82,6 +83,23 @@ int main()
 	file.open("test.bin", std::ios::binary | std::ios::trunc);
 	file.write((const char*)blob, blob_size);
 	file.close();
+
+	file.open("test.h", std::ios::trunc);
+
+	file << "const char font[] = {";
+	//file.write((const char*)blob, blob_size);
+	for (uint32_t i = 0; i<blob_size; i++)
+	{
+		if ((i & 0xF) == 0x0)
+			file << std::endl << "\t";
+
+		//file << "0x" << std::hex << int(blob[i]) << ", ";
+		file << "0x" << std::hex << std::setw(2) << std::setfill('0') << int(blob[i]) << ", ";
+
+	}
+	file << std::endl << "};";
+	file.close();
+
 
 
 	/*FT_Library ftLibrary;
