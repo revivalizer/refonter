@@ -19,6 +19,8 @@ struct refonter_vec3
 
 struct refonter_vertex
 {
+	refonter_vertex() {} // needs explict default dummy constructor, because it will otherwise generate memset reference :(
+
 	refonter_vec3 pos;
 	refonter_vec3 normal;
 };

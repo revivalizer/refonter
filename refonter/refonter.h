@@ -24,9 +24,9 @@ enum
 
 enum
 {
-	kPointTypeOn,
-	kPointTypeOffConic,
-	kPointTypeOffCubic,
+	kPointTypeOn = 1,
+	kPointTypeOffConic = 2,
+	kPointTypeOffCubic = 4,
 };
 
 typedef unsigned short refonter_count;

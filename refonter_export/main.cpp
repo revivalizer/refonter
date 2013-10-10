@@ -86,7 +86,7 @@ int main()
 
 	file.open("test.h", std::ios::trunc);
 
-	file << "const char font[] = {";
+	file << "unsigned char font[] = {";
 	//file.write((const char*)blob, blob_size);
 	for (uint32_t i = 0; i<blob_size; i++)
 	{
