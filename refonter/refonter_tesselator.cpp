@@ -171,6 +171,7 @@ void __stdcall combineCallback(GLdouble coords[3],
                      GLdouble *vertex_data[4],
                      GLfloat weight[4], GLdouble **dataOut )
 {
+	// NOTE: I am a little miffed that it is neccesary to check for null pointers in dataOut and vertex_data here. Shouldn't be neccesary.
 	//refonter_vertex* v = &(tess_obj->storage[tess_obj->num_storage++]);
 	refonter_vertex* v = new refonter_vertex();
 
@@ -178,12 +179,15 @@ void __stdcall combineCallback(GLdouble coords[3],
 	v->pos.y = coords[1];
 	v->pos.z = coords[2];
 
-	for (uint32_t i = 3; i <= 6; i++)
-		v->normal.v[i-3]	= weight[0] * vertex_data[0][i]
-							+ weight[1] * vertex_data[1][i]
-							+ weight[2] * vertex_data[2][i] 
-							+ weight[3] * vertex_data[3][i];
-	*dataOut = (GLdouble*)v;
+	if (dataOut)
+	{
+		for (uint32_t i = 3; i <= 6; i++)
+			v->normal.v[i-3]	= (vertex_data[0] ? weight[0] * vertex_data[0][i] : 0.0)
+								+ (vertex_data[1] ? weight[1] * vertex_data[1][i] : 0.0)
+								+ (vertex_data[2] ? weight[2] * vertex_data[2][i] : 0.0)
+								+ (vertex_data[3] ? weight[3] * vertex_data[3][i] : 0.0);
+		*dataOut = (GLdouble*)v;
+	}
 }
 
 const refonter_point& get_point(refonter_contour* contour, uint32_t i) { return contour->points[i % contour->num_points]; }
@@ -205,7 +209,7 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 	gluTessCallback(tess, GLU_TESS_COMBINE, (GLvoid (__stdcall *) ()) &combineCallback);
 
 	for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
-	//for (unsigned int ch = 0; ch < 12; ch++)
+	//for (unsigned int ch = 12; ch < 13; ch++)
 	{
 		refonter_tesselation_object_init(t[ch], tess);
 		t[ch].glID = glGenLists(1);
@@ -216,6 +220,7 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 		refonter_char* p_char = &(p_font->chars[ch]);
 
 		for (unsigned int c = 0; c < p_char->num_contours; c++)
+		//for (unsigned int c = 0; c < 1; c++)
 		{
 			gluTessBeginContour(tess);
 
@@ -243,6 +248,7 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 						refonter_vec3 control = refonter_vec_from_point(get_point(contour, i+1));
 
 						refonter_tesselation_object_add_bezier(&t[ch], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
+					//refonter_tesselation_object_add_vertex(&t[ch], curPoint, refonter_vec3());
 
 						curPoint = endPoint;
 
@@ -253,11 +259,13 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 					refonter_vec3 control = refonter_vec_from_point(get_point(contour, i+1));
 					refonter_vec3 endPoint = refonter_vec_from_point(get_point(contour, i+2));
 					refonter_tesselation_object_add_bezier(&t[ch], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
+//					refonter_tesselation_object_add_vertex(&t[ch], curPoint, refonter_vec3());
 					i += 2;
 				}
 				else if (get_point(contour, i+1).flags & kPointTypeOffCubic)
 				{
 					// On - Off cubic - Off cubic - on
+					//refonter_tesselation_object_add_vertex(&t[ch], refonter_vec_from_point(get_point(contour, i+0)), refonter_vec3());
 					refonter_tesselation_object_add_bezier(&t[ch], refonter_vec_from_point(get_point(contour, i+0)), refonter_vec_from_point(get_point(contour, i+1)), refonter_vec_from_point(get_point(contour, i+2)), refonter_vec_from_point(get_point(contour, i+3)));
 					i += 4;
 				}

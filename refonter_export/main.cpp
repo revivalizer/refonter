@@ -52,13 +52,16 @@ refonter_vec3 quadratic_bezier(double t, const refonter_vec3& start, const refon
 	return length;
 }*/
 
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glu.h>
+
 #include "refonter.h"
 #include "refonter_export.h"
 
 #include <iomanip>
 #include <iostream>
 #include <fstream>
-
 
 
 int main()
@@ -68,7 +71,7 @@ int main()
 
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\DreamMMA.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\8thCargo.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
-	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
+	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz ", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\Feathergraphy2.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\MotorwerkOblique.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\setbackt.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);

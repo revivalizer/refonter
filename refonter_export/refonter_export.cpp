@@ -2,10 +2,12 @@
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glu.h>
+
 #include "refonter.h"
 #include "refonter_export.h"
-
-#include <windows.h>
 
 struct refonter_im_point
 {
@@ -124,7 +126,7 @@ unsigned int get_contour_type(FT_Outline& outline, unsigned int c)
 		return -1;
 }
 
-refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Outline* outline)
+refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Outline* outline, int* width)
 {
 	// Init
 	FT_Error error;
@@ -147,6 +149,8 @@ refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Out
 	}
 
 	FT_GlyphSlot glyph = ftFace->glyph;
+
+	*width = glyph->metrics.horiAdvance;
 
 	// Check outline format
 	if (glyph->format != FT_GLYPH_FORMAT_OUTLINE)
@@ -205,7 +209,8 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 	{
 		// Load char outline
 		FT_Outline outline;
-		rfError = load_char_outline(ftFace, char_order[i], &outline);
+		int width;
+		rfError = load_char_outline(ftFace, char_order[i], &outline, &width);
 
 		if (rfError != kStatusOk)
 		{
@@ -244,7 +249,8 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 	{
 		// Load char outline
 		FT_Outline outline;
-		rfError = load_char_outline(ftFace, char_order[i], &outline);
+		int width;
+		rfError = load_char_outline(ftFace, char_order[i], &outline, &width);
 
 		// Apppend char
 		unsigned int num_contours = get_num_contours(outline);
@@ -253,6 +259,7 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 		p_char->flags = 0;
 		p_char->num_contours = num_contours;
 		p_char->contours = p_contour;
+		p_char->width = width;
 		p_char++;
 
 		// Iterate contours
