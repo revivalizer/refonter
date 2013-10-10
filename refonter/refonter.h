@@ -2,9 +2,6 @@
 
 #include <stdint.h> 
 
-#include "refonter_vertex.h"
-#include "refonter_tesselator.h"
-
 // TODO: For GNU
 //#define PACK_STRUCT( __Declaration__ ) __Declaration__ __attribute__((__packed__))
 // For MSVC
@@ -72,7 +69,12 @@ struct refonter_font
 
 refonter_font* refonter_init_blob(unsigned char* blob);
 
+#include "refonter_vertex.h"
+
 double refonter_bezier(double t, double start, double control1, double control2, double end);
 refonter_vec3 refonter_bezier(double t, const refonter_vec3& start, const refonter_vec3& control1, const refonter_vec3& control2, const refonter_vec3& end);
 refonter_vec3 refonter_quadratic_control_to_cubic(const refonter_vec3& p0, const refonter_vec3& p1);
+
+#include "refonter_tesselator.h"
+
 

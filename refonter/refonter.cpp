@@ -1,3 +1,7 @@
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glu.h>
+
 #include "refonter.h"
 
 refonter_font* refonter_init_blob(unsigned char* blob)

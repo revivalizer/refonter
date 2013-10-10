@@ -1,12 +1,10 @@
-#include "refonter.h"
-#include "refonter_vertex.h"
-#include "refonter_tesselator.h"
-
 #include <windows.h>
 #include <gl/gl.h>
 #include <gl/glu.h>
 
-static const unsigned int kMaxVertices = 8*1024*3;
+#include "refonter.h"
+#include "refonter_vertex.h"
+#include "refonter_tesselator.h"
 
 enum
 {
@@ -15,7 +13,7 @@ enum
 	kTypeTriangleFan = 3, //GL_TRIANGLE_FAN,
 };
 
-struct refonter_tesselation_object
+/*struct refonter_tesselation_object
 {
 	refonter_vertex front[kMaxVertices];
 	refonter_vertex side[kMaxVertices];
@@ -48,6 +46,13 @@ void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtessela
 
 	t.state_is_border = false;
 	t.state_count = 0;
+
+	t.glu_tess_obj = glu_tess_obj;
+}*/
+
+void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtesselator* glu_tess_obj)
+{
+	t.num_storage  = 0;
 
 	t.glu_tess_obj = glu_tess_obj;
 }
@@ -116,18 +121,18 @@ void refonter_tesselation_object_add_bezier(refonter_tesselation_object* tess_ob
 
 	}*/
 	end; control1; control2;
-	//refonter_tesselation_object_add_vertex(tess_obj, start, refonter_vec3());
+	refonter_tesselation_object_add_vertex(tess_obj, start, refonter_vec3());
 	refonter_tesselation_object_add_bezier_recursive(tess_obj, start, control1, control2, end);
 	//refonter_tesselation_object_add_vertex(tess_obj, end, refonter_vec3());
 }
 
-void refonter_tesselation_segment_begin(unsigned int type, void* data)
+/*void refonter_tesselation_segment_begin(unsigned int type, void* data)
 {
 	refonter_tesselation_object* t = (refonter_tesselation_object*)data;
 
 	t->state_type = type;
 	t->state_count = 0;
-}
+}*/
 
 refonter_vec3 refonter_vec_from_point(const refonter_point& p)
 {
@@ -174,7 +179,7 @@ void __stdcall combineCallback(GLdouble coords[3],
 	v->pos.z = coords[2];
 
 	for (uint32_t i = 3; i <= 6; i++)
-		v->normal.v[i-3]	= weight[0] * vertex_data[0][i] 
+		v->normal.v[i-3]	= weight[0] * vertex_data[0][i]
 							+ weight[1] * vertex_data[1][i]
 							+ weight[2] * vertex_data[2][i] 
 							+ weight[3] * vertex_data[3][i];
@@ -183,10 +188,8 @@ void __stdcall combineCallback(GLdouble coords[3],
 
 const refonter_point& get_point(refonter_contour* contour, uint32_t i) { return contour->points[i % contour->num_points]; }
 
-void refonter_tesselate_test(unsigned char* blob)
+refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 {
-	static refonter_font* p_font = refonter_init_blob(blob);
-
 	//refonter_tesselation_object* t = (refonter_tesselation_object*)malloc(sizeof(refonter_tesselation_object)*p_font->num_chars);
 	refonter_tesselation_object* t = new refonter_tesselation_object[p_font->num_chars];
 
@@ -195,22 +198,18 @@ void refonter_tesselate_test(unsigned char* blob)
 
 	gluTessNormal(tess, 0.0, 0.0, 1.0);
 
-gluTessCallback(tess, GLU_TESS_VERTEX,
-                   (GLvoid (__stdcall *) ()) &glVertex3dv);
-gluTessCallback(tess, GLU_TESS_BEGIN,
-                   (GLvoid (__stdcall *) ()) &beginCallback);
-gluTessCallback(tess, GLU_TESS_END,
-                   (GLvoid (__stdcall *) ()) &endCallback);
-gluTessCallback(tess, GLU_TESS_ERROR,
-                   (GLvoid (__stdcall *) ()) &errorCallback);
-gluTessCallback(tess, GLU_TESS_COMBINE,
-                   (GLvoid (__stdcall *) ()) &combineCallback);
+	gluTessCallback(tess, GLU_TESS_VERTEX, (GLvoid (__stdcall *) ()) &glVertex3dv);
+	gluTessCallback(tess, GLU_TESS_BEGIN, (GLvoid (__stdcall *) ()) &beginCallback);
+	gluTessCallback(tess, GLU_TESS_END, (GLvoid (__stdcall *) ()) &endCallback);
+	gluTessCallback(tess, GLU_TESS_ERROR, (GLvoid (__stdcall *) ()) &errorCallback);
+	gluTessCallback(tess, GLU_TESS_COMBINE, (GLvoid (__stdcall *) ()) &combineCallback);
 
-
-	//for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
-	for (unsigned int ch = 0; ch < 1; ch++)
+	for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
+	//for (unsigned int ch = 0; ch < 12; ch++)
 	{
 		refonter_tesselation_object_init(t[ch], tess);
+		t[ch].glID = glGenLists(1);
+		glNewList(t[ch].glID, GL_COMPILE);
 
 		gluTessBeginPolygon(tess, &t[ch]);
 
@@ -227,17 +226,17 @@ gluTessCallback(tess, GLU_TESS_COMBINE,
 
 			while (i < numPoints)
 			{
-				// Point must be on, so add it
-				refonter_tesselation_object_add_vertex(&t[ch], refonter_vec_from_point(get_point(contour, i)), refonter_vec3());
-
 				if (get_point(contour, i+1).flags & kPointTypeOn)
 				{
-					i++;
+					// On - on (straight line)
+					refonter_tesselation_object_add_vertex(&t[ch], refonter_vec_from_point(get_point(contour, i)), refonter_vec3());
+					i += 1;
 				}
 				else if (get_point(contour, i+1).flags & kPointTypeOffConic)
 				{
 					refonter_vec3 curPoint = refonter_vec_from_point(get_point(contour, i+0));
 
+					// On - Off conic series
 					while ((i < numPoints-1) && (get_point(contour, i+2).flags & kPointTypeOffConic))
 					{
 						refonter_vec3 endPoint = refonter_vertex_mid(refonter_vec_from_point(get_point(contour, i+1)), refonter_vec_from_point(get_point(contour, i+2)));
@@ -245,19 +244,20 @@ gluTessCallback(tess, GLU_TESS_COMBINE,
 
 						refonter_tesselation_object_add_bezier(&t[ch], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
 
-						refonter_tesselation_object_add_vertex(&t[ch], endPoint, refonter_vec3());
 						curPoint = endPoint;
 
-						i++;
+						i += 1;
 					}
 
+					// On - Off conic - on
 					refonter_vec3 control = refonter_vec_from_point(get_point(contour, i+1));
 					refonter_vec3 endPoint = refonter_vec_from_point(get_point(contour, i+2));
 					refonter_tesselation_object_add_bezier(&t[ch], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
-					i+=2;
+					i += 2;
 				}
 				else if (get_point(contour, i+1).flags & kPointTypeOffCubic)
 				{
+					// On - Off cubic - Off cubic - on
 					refonter_tesselation_object_add_bezier(&t[ch], refonter_vec_from_point(get_point(contour, i+0)), refonter_vec_from_point(get_point(contour, i+1)), refonter_vec_from_point(get_point(contour, i+2)), refonter_vec_from_point(get_point(contour, i+3)));
 					i += 4;
 				}
@@ -267,7 +267,11 @@ gluTessCallback(tess, GLU_TESS_COMBINE,
 		}
 
 		gluTessEndPolygon(tess);
+
+		glEndList();
 	}
 
 	gluDeleteTess(tess);
+
+	return t;
 }
