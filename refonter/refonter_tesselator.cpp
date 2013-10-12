@@ -6,6 +6,10 @@
 #include "refonter_vertex.h"
 #include "refonter_tesselator.h"
 
+//#define GL_TRIANGLES                      0x0004
+//#define GL_TRIANGLE_STRIP                 0x0005
+//#define GL_TRIANGLE_FAN                   0x0006
+
 enum
 {
 	kTypeTriangle = 1, //GL_TRIANGLES,
@@ -53,6 +57,7 @@ void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtessela
 void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtesselator* glu_tess_obj)
 {
 	t.num_storage  = 0;
+	t.num_triangle_vertices  = 0;
 
 	t.glu_tess_obj = glu_tess_obj;
 }
@@ -144,18 +149,84 @@ refonter_vec3 refonter_vec_from_point(const refonter_point& p)
 	return res;
 }
 
+refonter_tesselation_object* current_tesselator = NULL;
+
 /*  a portion of init() */
 /*  the callback routines registered by gluTessCallback() */
 
 void __stdcall beginCallback(GLenum which)
 {
-   glBegin(which);
+   //glBegin(which);
+   current_tesselator->type = which;
+   current_tesselator->vcount = 0;
 }
 
 void __stdcall endCallback(void)
 {
-   glEnd();
+   //glEnd();
 }
+
+void current_tesselator_add_triangle_vertex(const refonter_vertex& v)
+{
+	current_tesselator->triangles[current_tesselator->num_triangle_vertices++] = v;
+}
+
+void __stdcall vertexCallback(GLdouble* vertices)
+{
+	//vertices[0] = vertices[1];
+	//glVertex3dv(vertices);
+	refonter_vertex v;// = &(current_tesselator->triangles[current_tesselator->num_triangle_vertices++]);
+	v.pos.x = vertices[0];
+	v.pos.y = vertices[1];
+	v.pos.z = vertices[2];
+	v.normal.x = 0.0;
+	v.normal.y = 0.0;
+	v.normal.z = 1.0;
+
+	if (current_tesselator->type==GL_TRIANGLES)
+	{
+		current_tesselator_add_triangle_vertex(v);
+		//current_tesselator->triangles[current_tesselator->num_triangle_vertices++] = v;
+	}
+	else if (current_tesselator->type==GL_TRIANGLE_FAN)
+	{
+		if (current_tesselator->vcount >= 2)
+		{
+			current_tesselator_add_triangle_vertex(current_tesselator->history[0]);
+			current_tesselator_add_triangle_vertex(current_tesselator->history[1]);
+			current_tesselator_add_triangle_vertex(v);
+		}
+
+		if (current_tesselator->vcount==0)
+			current_tesselator->history[0] = v;
+		else
+			current_tesselator->history[1] = v;
+	}
+	else if (current_tesselator->type==GL_TRIANGLE_STRIP)
+	{
+		if (current_tesselator->vcount >= 2)
+		{
+			if ((current_tesselator->vcount & 1) == 1)
+			{
+				current_tesselator_add_triangle_vertex(current_tesselator->history[0]);
+				current_tesselator_add_triangle_vertex(v);
+				current_tesselator_add_triangle_vertex(current_tesselator->history[1]);
+			}
+			else
+			{
+				current_tesselator_add_triangle_vertex(current_tesselator->history[0]);
+				current_tesselator_add_triangle_vertex(current_tesselator->history[1]);
+				current_tesselator_add_triangle_vertex(v);
+			}
+		}
+
+		current_tesselator->history[0] = current_tesselator->history[1];
+		current_tesselator->history[1] = v;
+	}
+
+	current_tesselator->vcount++;
+}
+
 
 void __stdcall errorCallback(GLenum errorCode)
 {
@@ -202,7 +273,8 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 
 	gluTessNormal(tess, 0.0, 0.0, 1.0);
 
-	gluTessCallback(tess, GLU_TESS_VERTEX, (GLvoid (__stdcall *) ()) &glVertex3dv);
+	//gluTessCallback(tess, GLU_TESS_VERTEX, (GLvoid (__stdcall *) ()) &glVertex3dv);
+	gluTessCallback(tess, GLU_TESS_VERTEX, (GLvoid (__stdcall *) ()) &vertexCallback);
 	gluTessCallback(tess, GLU_TESS_BEGIN, (GLvoid (__stdcall *) ()) &beginCallback);
 	gluTessCallback(tess, GLU_TESS_END, (GLvoid (__stdcall *) ()) &endCallback);
 	gluTessCallback(tess, GLU_TESS_ERROR, (GLvoid (__stdcall *) ()) &errorCallback);
@@ -212,6 +284,7 @@ refonter_tesselation_object* refonter_tesselate(refonter_font* p_font)
 	//for (unsigned int ch = 12; ch < 13; ch++)
 	{
 		refonter_tesselation_object_init(t[ch], tess);
+		current_tesselator = &t[ch];
 		t[ch].glID = glGenLists(1);
 		glNewList(t[ch].glID, GL_COMPILE);
 
