@@ -6,54 +6,6 @@
 #include "refonter_vertex.h"
 #include "refonter_tesselator.h"
 
-//#define GL_TRIANGLES                      0x0004
-//#define GL_TRIANGLE_STRIP                 0x0005
-//#define GL_TRIANGLE_FAN                   0x0006
-
-enum
-{
-	kTypeTriangle = 1, //GL_TRIANGLES,
-	kTypeTriangleStrip = 2, //GL_TRIANGLE_STRIP,
-	kTypeTriangleFan = 3, //GL_TRIANGLE_FAN,
-};
-
-/*struct refonter_tesselation_object
-{
-	refonter_vertex front[kMaxVertices];
-	refonter_vertex side[kMaxVertices];
-	refonter_vertex back[kMaxVertices];
-
-	refonter_vertex storage[kMaxVertices];
-
-	unsigned int num_front;
-	unsigned int num_side;
-	unsigned int num_back;
-	unsigned int num_storage;
-
-	unsigned int state_type;
-	unsigned int state_is_border;
-	unsigned int state_count;
-
-	refonter_vertex h1;
-	refonter_vertex h2;
-
-	GLUtesselator* glu_tess_obj;
-};
-
-void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtesselator* glu_tess_obj)
-{
-	t.num_front = 0;
-	t.num_side  = 0;
-	t.num_back  = 0;
-	
-	t.num_storage  = 0;
-
-	t.state_is_border = false;
-	t.state_count = 0;
-
-	t.glu_tess_obj = glu_tess_obj;
-}*/
-
 void refonter_tesselation_object_init(refonter_tesselation_object& t, GLUtesselator* glu_tess_obj)
 {
 	t.num_storage  = 0;
@@ -71,6 +23,7 @@ void refonter_tesselation_object_add_vertex(refonter_tesselation_object* tess_ob
 	gluTessVertex(tess_obj->glu_tess_obj, (GLdouble*)&pos, (void*)v);
 }
 
+// This is MSVC specific, of course
 double refonter_fabsd(const double x) 
 {
 	double r;

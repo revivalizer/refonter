@@ -2,39 +2,50 @@
 #include FT_FREETYPE_H
 #include FT_OUTLINE_H
 
+// These three lines are win/VC specific
 #include <windows.h>
-#include <gl/gl.h>
-#include <gl/glu.h>
+static char errorString[512];
+#define REFONTER_ERROR(format, ...) sprintf(errorString, format, __VA_ARGS__); OutputDebugStringA(errorString); 
 
 #include "refonter.h"
 #include "refonter_export.h"
 
-struct refonter_im_point
+struct intermediate_point
 {
 	int x, y;
 	char tag;
-	unsigned int id;
 };
 
-unsigned int get_num_contours(FT_Outline& outline);
-unsigned int get_num_points(FT_Outline& outline, unsigned int c);
-
-
-char buf[512];
-
-unsigned int get_contour_start_index(FT_Outline& outline, unsigned int c)
+unsigned int get_num_contours(FT_Outline& outline)
 {
-	if (c==0)
-		return 0;
-	else
-		return outline.contours[c-1]+1;
+	return outline.n_contours;
 }
 
-unsigned int get_contour_start_offset(FT_Outline& outline, unsigned int c)
+unsigned int get_contour_num_points(FT_Outline& outline, unsigned int contour)
+{
+	if (contour==0)
+		return outline.contours[0] + 1;
+	else
+		return outline.contours[contour] - outline.contours[contour-1];
+}
+
+
+unsigned int get_contour_start_index(FT_Outline& outline, unsigned int contour)
+{
+	if (contour==0)
+		return 0;
+	else
+		return outline.contours[contour-1]+1;
+}
+
+// Find the relative offset from start index to first point of type ON.
+// This is neccesary because a contour may start with any type of point, but
+// refonter assumes (for simplicity)  that the first point is type ON.
+unsigned int get_contour_start_offset(FT_Outline& outline, unsigned int contour)
 {
 	// Determine start and end pos
-	unsigned int start = get_contour_start_index(outline, c);
-	unsigned int stop = start + get_num_points(outline, c);
+	unsigned int start = get_contour_start_index(outline, contour);
+	unsigned int stop = start + get_contour_num_points(outline, contour);
 
 	// Look for first FT_CURVE_TAG_ON point
 	unsigned int i = start;
@@ -47,57 +58,42 @@ unsigned int get_contour_start_offset(FT_Outline& outline, unsigned int c)
 		return i-start;
 	else
 		return -1;
-
 }
 
-unsigned int get_point_index(FT_Outline& outline, unsigned int c, unsigned int p)
+unsigned int get_point_index(FT_Outline& outline, unsigned int contour, unsigned int point)
 {
-	unsigned int start = get_contour_start_index(outline, c);
-	unsigned int offset = get_contour_start_offset(outline, c);
-	unsigned int num = get_num_points(outline, c);
+	unsigned int start = get_contour_start_index(outline, contour);
+	unsigned int offset = get_contour_start_offset(outline, contour);
+	unsigned int num_points_in_contour = get_contour_num_points(outline, contour);
 
-	unsigned int i = start + ((p + offset) % num);
+	unsigned int i = start + ((point + offset) % num_points_in_contour); // treat points in array as circular buffer
 
 	return i;
 }
 
-refonter_im_point get_point(FT_Outline& outline, unsigned int c, unsigned int p)
+intermediate_point get_point(FT_Outline& outline, unsigned int contour, unsigned int point)
 {
-	unsigned int i = get_point_index(outline, c, p);
+	unsigned int i = get_point_index(outline, contour, point);
 
-	refonter_im_point res;
+	intermediate_point res;
 	res.x   = outline.points[i].x;
 	res.y   = outline.points[i].y;
-	res.tag = FT_CURVE_TAG(outline.tags[i]);
-	res.id  = i;
+	res.tag = FT_CURVE_TAG(outline.tags[i]); // we're only interested in the type tag
 
 	return res;
 }
 
-unsigned int get_num_contours(FT_Outline& outline)
+unsigned int get_contour_order(FT_Outline& outline, unsigned int contour)
 {
-	return outline.n_contours;
-}
+	unsigned int n = get_contour_num_points(outline, contour);
 
-unsigned int get_num_points(FT_Outline& outline, unsigned int c)
-{
-	if (c==0)
-		return outline.contours[0] + 1;
-	else
-		return outline.contours[c] - outline.contours[c-1];
-}
-
-unsigned int get_contour_order(FT_Outline& outline, unsigned int c)
-{
-	unsigned int n = get_num_points(outline, c);
-
-	// Compute polygon area (or double)
+	// Compute polygon area (or double polygon area, rather)
 	signed int area = 0;
 
 	for (unsigned int i = 0; i < n; i++)
 	{
-		refonter_im_point p1 = get_point(outline, c, i);
-		refonter_im_point p2 = get_point(outline, c, (i+1) % n);
+		intermediate_point p1 = get_point(outline, contour, i);
+		intermediate_point p2 = get_point(outline, contour, (i+1) % n);
 
 		area += p1.x*p2.y - p2.x*p1.y;
 	}
@@ -136,7 +132,7 @@ refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Out
 
 	if (ftGlyphIndex==0)
 	{
-		sprintf(buf, "FT glyph not found: %d\n", ch); OutputDebugStringA(buf); 
+		REFONTER_ERROR("FT glyph not found: %d\n", ch);
 		return kStatusErrorFTGlyphNotFound;
 	}
 
@@ -144,7 +140,7 @@ refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Out
 	error = FT_Load_Glyph(ftFace, ftGlyphIndex, FT_LOAD_NO_HINTING | FT_LOAD_NO_BITMAP);
 	if (error != FT_Err_Ok)
 	{
-		sprintf(buf, "Load glyph error: %d (glyph: %d)\n", error, ch); OutputDebugStringA(buf);
+		REFONTER_ERROR("Load glyph error: %d (glyph: %d)\n", error, ch);
 		return kStatusErrorFTGlyphNotLoaded;
 	}
 
@@ -155,7 +151,7 @@ refonter_status load_char_outline(FT_Face& ftFace, refonter_char_type ch, FT_Out
 	// Check outline format
 	if (glyph->format != FT_GLYPH_FORMAT_OUTLINE)
 	{
-		OutputDebugStringA("ERRORL: Glyph format must be outline.");
+		REFONTER_ERROR("ERRORL: Glyph format must be outline.");
 		return kStatusErrorFTGlyphOutlineNotAvailable;
 	}
 
@@ -168,15 +164,15 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 {
 	FT_Library ftLibrary;
 	FT_Face    ftFace;
-
 	FT_Error ftError;
+
 	refonter_status rfError;
 
 	// Open FT library
 	ftError = FT_Init_FreeType(&ftLibrary);
 	if (ftError != FT_Err_Ok)
 	{
-		sprintf(buf, "FT init error: %d\n", ftError); OutputDebugStringA(buf);
+		REFONTER_ERROR("FT init error: %d\n", ftError);
 		return kStatusErrorFTInit;
 	}
 
@@ -184,7 +180,7 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 	ftError = FT_New_Face(ftLibrary, path, 0, &ftFace);
 	if (ftError != FT_Err_Ok)
 	{
-		sprintf(buf, "FT load face error: %d\n", ftError); OutputDebugStringA(buf);
+		REFONTER_ERROR("FT load face error: %d\n", ftError)
 		FT_Done_FreeType(ftLibrary);
 		return kStatusErrorFTLoadFontFace;
 	}
@@ -193,7 +189,7 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 	ftError = FT_Set_Char_Size(ftFace, 0, point_size, resolution, resolution);
 	if (ftError != FT_Err_Ok)
 	{
-		sprintf(buf, "FT set char size error: %d\n", ftError); OutputDebugStringA(buf);
+		REFONTER_ERROR("FT set char size error: %d\n", ftError);
 		FT_Done_Face(ftFace);
 		FT_Done_FreeType(ftLibrary);
 		return kStatusErrorFTSetCharSize;
@@ -224,7 +220,7 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 		num_points += outline.n_points;
 	}
 
-	// Allocate blob
+	// COmpute byte size and allocate blob
 	unsigned int size_fonts = num_fonts*sizeof(refonter_font);
 	unsigned int size_chars = num_chars*sizeof(refonter_char);
 	unsigned int size_contours = num_contours*sizeof(refonter_contour);
@@ -234,82 +230,82 @@ refonter_status refonter_create_font_blob(unsigned char** blob, unsigned int* bl
 	*blob = (unsigned char*)malloc(*blob_size);
 
 	// Define pointers
-	refonter_font*    p_font    = (refonter_font*)   (*blob);
-	refonter_char*    p_char    = (refonter_char*)   (*blob + size_fonts);
-	refonter_contour* p_contour = (refonter_contour*)(*blob + size_fonts + size_chars);
-	refonter_point*   p_point   = (refonter_point*)  (*blob + size_fonts + size_chars + size_contours);
+	refonter_font*    cur_font    = (refonter_font*)   (*blob);
+	refonter_char*    cur_char    = (refonter_char*)   (*blob + size_fonts);
+	refonter_contour* cur_contour = (refonter_contour*)(*blob + size_fonts + size_chars);
+	refonter_point*   cur_point   = (refonter_point*)  (*blob + size_fonts + size_chars + size_contours);
 
 	// Append font to blob
-	p_font->flags = 0;
-	p_font->num_chars = num_chars;
-	p_font->chars = p_char;
+	cur_font->flags     = 0;
+	cur_font->num_chars = num_chars;
+	cur_font->chars     = cur_char;
 
-	// Iterate chars
+	// For each char
 	for (unsigned int i = 0; i < num_chars; i++)
 	{
 		// Load char outline
 		FT_Outline outline;
 		int width;
-		rfError = load_char_outline(ftFace, char_order[i], &outline, &width);
+		rfError = load_char_outline(ftFace, char_order[i], &outline, &width); // we don't check error here since it succeeded previously
 
-		// Apppend char
+		// Apppend char to blob
 		unsigned int num_contours = get_num_contours(outline);
 
-		p_char->id = char_order[i];
-		p_char->flags = 0;
-		p_char->num_contours = num_contours;
-		p_char->contours = p_contour;
-		p_char->width = width;
-		p_char++;
+		cur_char->id           = char_order[i];
+		cur_char->flags        = 0;
+		cur_char->num_contours = num_contours;
+		cur_char->contours     = cur_contour;
+		cur_char->width        = width;
+		cur_char++;
 
-		// Iterate contours
+		// For each contour in char
 		for (unsigned int c = 0; c < num_contours; c++)
 		{
-			// Append contour
-			unsigned int num_points = get_num_points(outline, c);
-			p_contour->flags = 0;
-			p_contour->num_points = get_num_points(outline, c);
-			p_contour->points = p_point;
-			p_contour++;
+			// Append contour to blob
+			unsigned int num_points = get_contour_num_points(outline, c);
+			cur_contour->flags      = 0;
+			cur_contour->num_points = get_contour_num_points(outline, c);
+			cur_contour->points     = cur_point;
+			cur_contour++;
 
-			// Iterate points
+			// For each point in contour 
 			for (unsigned int p = 0; p < num_points; p++)
 			{
-				refonter_im_point im_point = get_point(outline, c, p);
+				intermediate_point im_point = get_point(outline, c, p);
 
-				p_point->x = im_point.x;
-				p_point->y = im_point.y;
+				// Append point to blob
+				cur_point->x = im_point.x;
+				cur_point->y = im_point.y;
 
 				switch (im_point.tag)
 				{
 					case FT_CURVE_TAG_ON:
-						p_point->flags = kPointTypeOn;
+						cur_point->flags = kPointTypeOn;
 						break;
 					case FT_CURVE_TAG_CONIC:
-						p_point->flags = kPointTypeOffConic;
+						cur_point->flags = kPointTypeOffConic;
 						break;
 					case FT_CURVE_TAG_CUBIC:
-						p_point->flags = kPointTypeOffCubic;
+						cur_point->flags = kPointTypeOffCubic;
 						break;
 				}
 
-				p_point++;
+				cur_point++;
 			}
 		}
 	}
-
 	
 	return kStatusOk;
 }
 
 void transform_pointers_to_offsets(refonter_font* p_font)
 {
-	// Iterate over chars
+	// For each char
 	for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
 	{
 		refonter_char* p_char = &(p_font->chars[ch]);
 
-		// Iterate over contours
+		// For each contour in char
 		for (int c = 0; c < p_char->num_contours; c++)
 		{
 			refonter_contour* p_contour = &(p_char->contours[c]);
@@ -328,19 +324,20 @@ void transform_pointers_to_offsets(refonter_font* p_font)
 
 void delta_encode_points(refonter_font* p_font)
 {
-	// Iterate over chars
+	// For each char
 	for (unsigned int ch = 0; ch < p_font->num_chars; ch++)
 	{
 		refonter_char* p_char = &(p_font->chars[ch]);
 
-		// Iterate over contours
+		// For each contour in char
 		for (int c = 0; c < p_char->num_contours; c++)
 		{
 			refonter_contour* p_contour = &(p_char->contours[c]);
 
+			// Init delta encoding
 			refonter_coord prev_x = 0, prev_y = 0;
 
-			// Iterate over points
+			// For each point in contour
 			for (int p = 0; p < p_contour->num_points; p++)
 			{
 				refonter_point* p_point = &(p_contour->points[p]);

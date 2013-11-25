@@ -76,6 +76,4 @@ double refonter_bezier(double t, double start, double control1, double control2,
 refonter_vec3 refonter_bezier(double t, const refonter_vec3& start, const refonter_vec3& control1, const refonter_vec3& control2, const refonter_vec3& end);
 refonter_vec3 refonter_quadratic_control_to_cubic(const refonter_vec3& p0, const refonter_vec3& p1);
 
-#include "refonter_tesselator.h"
-
 

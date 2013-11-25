@@ -71,7 +71,8 @@ int main()
 
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\DreamMMA.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\8thCargo.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
-	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz ", 16*64, 72);
+	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\EchinosParkScript.ttf", "abcdefghijklmnopqrstuvwxyz ", 16*64, 72);
+	refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\cheri.ttf", "abcdefghijklmnopqrstuvwxyz0123456789,.'-!() ", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\Feathergraphy2.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\MotorwerkOblique.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
 	//refonter_create_font_blob(&blob, &blob_size, "..\\..\\..\\setbackt.ttf", "abcdefghijklmnopqrstuvwxyz", 16*64, 72);
@@ -83,11 +84,11 @@ int main()
 	transform_pointers_to_offsets(p_font);
 
 	std::ofstream file;
-	file.open("test.bin", std::ios::binary | std::ios::trunc);
+	file.open("cheri.bin", std::ios::binary | std::ios::trunc);
 	file.write((const char*)blob, blob_size);
 	file.close();
 
-	file.open("test.h", std::ios::trunc);
+	file.open("cheri.h", std::ios::trunc);
 
 	file << "unsigned char font[] = {";
 	//file.write((const char*)blob, blob_size);
