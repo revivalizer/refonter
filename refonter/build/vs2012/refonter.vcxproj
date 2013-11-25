@@ -11,14 +11,14 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\refonter.cpp" />
-    <ClCompile Include="..\..\refonter_tesselator.cpp" />
-    <ClCompile Include="..\..\refonter_vertex.cpp" />
+    <ClInclude Include="..\..\refonter.h" />
+    <ClInclude Include="..\..\refonter_glu_tesselator.h" />
+    <ClInclude Include="..\..\refonter_vertex.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\refonter.h" />
-    <ClInclude Include="..\..\refonter_tesselator.h" />
-    <ClInclude Include="..\..\refonter_vertex.h" />
+    <ClCompile Include="..\..\refonter.c" />
+    <ClCompile Include="..\..\refonter_glu_tesselator.c" />
+    <ClCompile Include="..\..\refonter_vertex.c" />
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectGuid>{E99243F4-C6B0-42F6-B337-0BF5DE6D8867}</ProjectGuid>
