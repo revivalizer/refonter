@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // TODO: We really should be able to run in warning level 4 with no warnings.
 #pragma warning(push) 
 #pragma warning(disable: 4201)
@@ -30,3 +34,6 @@ refonter_vec3 refonter_vertex_plus(const refonter_vec3& p1, const refonter_vec3&
 refonter_vec3 refonter_vertex_mid(const refonter_vec3& p1, const refonter_vec3& p2);
 void refonter_vertex_zero(refonter_vec3& p);
 
+#ifdef __cplusplus
+}
+#endif

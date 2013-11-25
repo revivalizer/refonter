@@ -1,5 +1,9 @@
 #pragma once
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 static const unsigned int kMaxTesselatorVertices = 8*1024;
 
 struct refonter_tesselation_object
@@ -20,3 +24,7 @@ struct refonter_tesselation_object
 };
 
 refonter_tesselation_object* refonter_tesselate(refonter_font* p_font);
+
+#ifdef __cplusplus
+}
+#endif
