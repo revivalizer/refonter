@@ -1,6 +1,15 @@
 #include "refonter_vertex.h"
 
-refonter_vec3 refonter_vertex_minus(const refonter_vec3& p1, const refonter_vec3& p2)
+refonter_vec3 refonter_zero_vertex()
+{
+	refonter_vec3 res;
+	res.x = 0;
+	res.y = 0;
+	res.z = 0;
+	return res;
+}
+
+refonter_vec3 refonter_vertex_minus(const refonter_vec3 p1, const refonter_vec3 p2)
 {
 	refonter_vec3 res;
 	res.x = p1.x - p2.x;
@@ -9,7 +18,7 @@ refonter_vec3 refonter_vertex_minus(const refonter_vec3& p1, const refonter_vec3
 	return res;
 }
 
-refonter_vec3 refonter_vertex_plus(const refonter_vec3& p1, const refonter_vec3& p2)
+refonter_vec3 refonter_vertex_plus(const refonter_vec3 p1, const refonter_vec3 p2)
 {
 	refonter_vec3 res;
 	res.x = p1.x + p2.x;
@@ -18,7 +27,7 @@ refonter_vec3 refonter_vertex_plus(const refonter_vec3& p1, const refonter_vec3&
 	return res;
 }
 
-refonter_vec3 refonter_vertex_mid(const refonter_vec3& p1, const refonter_vec3& p2)
+refonter_vec3 refonter_vertex_mid(const refonter_vec3 p1, const refonter_vec3 p2)
 {
 	refonter_vec3 res = refonter_vertex_plus(p1, p2);
 	res.x /= 2;
@@ -27,7 +36,7 @@ refonter_vec3 refonter_vertex_mid(const refonter_vec3& p1, const refonter_vec3& 
 	return res;
 }
 
-void refonter_vertex_zero(refonter_vec3& p)
+void refonter_vertex_zero(refonter_vec3 p)
 {
 	p.x = 0;
 	p.y = 0;

@@ -4,9 +4,9 @@
 extern "C" {
 #endif
 
-static const unsigned int kMaxTesselatorVertices = 8*1024;
+#define kMaxTesselatorVertices 8192
 
-struct refonter_tesselation_object
+typedef struct 
 {
 	refonter_vertex storage[kMaxTesselatorVertices];
 	refonter_vertex triangles[kMaxTesselatorVertices];
@@ -21,7 +21,7 @@ struct refonter_tesselation_object
 	refonter_vertex history[2];
 	uint32_t type;
 	uint32_t vcount;
-};
+} refonter_tesselation_object;
 
 refonter_tesselation_object* refonter_tesselate(refonter_font* p_font);
 

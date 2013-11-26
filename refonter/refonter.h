@@ -40,44 +40,44 @@ typedef unsigned short refonter_font_info;
 typedef char           refonter_char_type;
 
 PACK_STRUCT(
-struct refonter_point
+typedef struct 
 {
 	refonter_coord      x;
 	refonter_coord      y;
 	refonter_point_info flags;
-});
+} refonter_point);
 
 PACK_STRUCT(
-struct refonter_contour
+typedef struct 
 {
 	refonter_contour_info flags;
 	refonter_count        num_points;
 	refonter_point*       points;
-});
+} refonter_contour);
 
 PACK_STRUCT(
-struct refonter_char
+typedef struct 
 {
 	refonter_char_type id;
 	refonter_char_info flags;
 	refonter_coord     width;
 	refonter_count     num_contours;
 	refonter_contour*  contours;
-});
+} refonter_char);
 
 PACK_STRUCT(
-struct refonter_font
+typedef struct 
 {
 	refonter_font_info  flags;
 	refonter_count      num_chars;
 	refonter_char*      chars;
-});
+} refonter_font);
 
 refonter_font* refonter_init_blob(unsigned char* blob);
 
-double refonter_bezier(double t, double start, double control1, double control2, double end);
-refonter_vec3 refonter_bezier(double t, const refonter_vec3& start, const refonter_vec3& control1, const refonter_vec3& control2, const refonter_vec3& end);
-refonter_vec3 refonter_quadratic_control_to_cubic(const refonter_vec3& p0, const refonter_vec3& p1);
+double refonter_bezier1(double t, double start, double control1, double control2, double end);
+refonter_vec3 refonter_bezier3(double t, const refonter_vec3 start, const refonter_vec3 control1, const refonter_vec3 control2, const refonter_vec3 end);
+refonter_vec3 refonter_quadratic_control_to_cubic(const refonter_vec3 p0, const refonter_vec3 p1);
 
 #ifdef __cplusplus
 }
