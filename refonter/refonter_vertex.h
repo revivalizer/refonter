@@ -4,27 +4,15 @@
 extern "C" {
 #endif
 
-// TODO: We really should be able to run in warning level 4 with no warnings.
-#pragma warning(push) 
-#pragma warning(disable: 4201)
 typedef struct 
 {
-	union {
-		struct
-		{
-			double x;
-			double y;
-			double z;
-		};
-		double v[3];
-	};
+	double x;
+	double y;
+	double z;
 } refonter_vec3;
-#pragma warning(pop) 
 
 typedef struct 
 {
-//	refonter_vertex() {} // needs explict default dummy constructor, because it will otherwise generate memset reference :(
-
 	refonter_vec3 pos;
 	refonter_vec3 normal;
 } refonter_vertex;

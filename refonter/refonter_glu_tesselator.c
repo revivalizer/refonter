@@ -212,11 +212,17 @@ void __stdcall combineCallback(GLdouble coords[3],
 	if (dataOut)
 	{
 		uint32_t i;
+
+		double* coord = &(v->normal.x);
+
 		for (i = 3; i <= 6; i++)
-			v->normal.v[i-3]	= (vertex_data[0] ? weight[0] * vertex_data[0][i] : 0.0)
-								+ (vertex_data[1] ? weight[1] * vertex_data[1][i] : 0.0)
-								+ (vertex_data[2] ? weight[2] * vertex_data[2][i] : 0.0)
-								+ (vertex_data[3] ? weight[3] * vertex_data[3][i] : 0.0);
+		{
+			*coord++    = (vertex_data[0] ? weight[0] * vertex_data[0][i] : 0.0)
+			            + (vertex_data[1] ? weight[1] * vertex_data[1][i] : 0.0)
+			            + (vertex_data[2] ? weight[2] * vertex_data[2][i] : 0.0)
+			            + (vertex_data[3] ? weight[3] * vertex_data[3][i] : 0.0);
+		}
+
 		*dataOut = (GLdouble*)v;
 	}
 }

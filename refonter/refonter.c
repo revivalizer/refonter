@@ -57,10 +57,10 @@ double refonter_bezier1(double t, double start, double control1, double control2
 refonter_vec3 refonter_bezier3(double t, const refonter_vec3 start, const refonter_vec3 control1, const refonter_vec3 control2, const refonter_vec3 end)
 {
 	refonter_vec3 res;
-	int i;
 
-	for (i = 0; i < 3; i++)
-		res.v[i] = refonter_bezier1(t, start.v[i], control1.v[i], control2.v[i], end.v[i]);
+	res.x = refonter_bezier1(t, start.x, control1.x, control2.x, end.x);
+	res.y = refonter_bezier1(t, start.y, control1.y, control2.y, end.y);
+	res.z = refonter_bezier1(t, start.z, control1.z, control2.z, end.z);
 
 	return res;
 }
