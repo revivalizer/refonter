@@ -135,39 +135,27 @@ static void __stdcall callback_add_vertex(GLdouble* vertices)
 			current_tesselator_add_triangle_vertex(v);
 		}
 
+		// Update history
+		current_tesselator->cur_prim_history[1] = v;
+
 		if (current_tesselator->cur_prim_count==0)
-		{
-			// Set first vertex as center vertex
 			current_tesselator->cur_prim_history[0] = v;
-		}
-		else
-		{
-			// Save current vertex
-			current_tesselator->cur_prim_history[1] = v;
-		}
+
 	}
 	else if (current_tesselator->cur_prim_type==GL_TRIANGLE_STRIP)
 	{
 		if (current_tesselator->cur_prim_count >= 2)
 		{
 			// Out triangle comprised of last three vertices, switching winding order for every triangle
-			if ((current_tesselator->cur_prim_count & 1) == 1)
-			{
-				current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[0]);
-				current_tesselator_add_triangle_vertex(v);
-				current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[1]);
-			}
-			else
-			{
-				current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[0]);
-				current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[1]);
-				current_tesselator_add_triangle_vertex(v);
-			}
+			current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[0]);
+			current_tesselator_add_triangle_vertex(current_tesselator->cur_prim_history[1]);
+			current_tesselator_add_triangle_vertex(v);
 		}
 
 		// Update history
-		current_tesselator->cur_prim_history[0] = current_tesselator->cur_prim_history[1];
-		current_tesselator->cur_prim_history[1] = v;
+		// We switch between updating history 0 and 1. This is neccesary to ensure correct winding order.
+		// Take a look at an illustration of the triangle strip to understand why
+		current_tesselator->cur_prim_history[(current_tesselator->cur_prim_count & 1)] = v;
 	}
 
 	current_tesselator->cur_prim_count++;
