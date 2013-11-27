@@ -175,12 +175,11 @@ static void __stdcall callback_add_vertex(GLdouble* vertices)
 
 static void __stdcall callback_error(GLenum errorCode)
 {
+	// I am not sure what to do here yet :)
 	const GLubyte *estring;
 
 	estring = gluErrorString(errorCode);
-	//   fprintf (stderr, "Tessellation Error: %s\n", estring);
 	OutputDebugStringA((LPCSTR)estring);
-	//exit (0);
 }
 
 static void __stdcall callback_combine(GLdouble coords[3], 
@@ -217,7 +216,7 @@ static const refonter_point get_point(refonter_contour* contour, uint32_t i) { r
 
 refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, double flatness_tolerance)
 {
-	unsigned int contour, character;
+	unsigned int character, contour;
 	refonter_char* cur_char;
 	refonter_contour* cur_contour;
 	refonter_tesselation_object* tess_objects;
@@ -237,29 +236,35 @@ refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, dou
 	// Setup callbacks for tesselator
 	gluTessCallback(glu_tess, GLU_TESS_VERTEX,  (GLvoid (__stdcall *) ()) &callback_add_vertex);
 	gluTessCallback(glu_tess, GLU_TESS_BEGIN,   (GLvoid (__stdcall *) ()) &callback_begin_primitive);
-	//gluTessCallback(glu_tess, GLU_TESS_END,     (GLvoid (__stdcall *) ()) &callback_end_primitive); not used
+	gluTessCallback(glu_tess, GLU_TESS_END,     (GLvoid (__stdcall *) ()) &callback_end_primitive); // currently not used
 	gluTessCallback(glu_tess, GLU_TESS_ERROR,   (GLvoid (__stdcall *) ()) &callback_error);
 	gluTessCallback(glu_tess, GLU_TESS_COMBINE, (GLvoid (__stdcall *) ()) &callback_combine);
 
-	// 
-	for (contour=0; contour<cur_font->num_chars; contour++)
+	// Iterate over all characters in font
+	for (character = 0; character < cur_font->num_chars; character++)
 	{
-		tessobj_init(&(tess_objects[contour]), glu_tess);
-		current_tesselator = &tess_objects[contour];
+		cur_char = &(cur_font->chars[character]);
+
+		// Init tesselator object for char
+		tessobj_init(&(tess_objects[character]), glu_tess);
+		current_tesselator = &tess_objects[character];
 		current_tesselator->flatness_tolerance = flatness_tolerance;
 
-		gluTessBeginPolygon(glu_tess, &tess_objects[contour]);
+		gluTessBeginPolygon(glu_tess, &tess_objects[character]);
 
-		cur_char = &(cur_font->chars[contour]);
-
-		for (character = 0; character < cur_char->num_contours; character++)
-		//for (unsigned int c = 0; c < 1; c++)
+		// Iterate over contours in char
+		for (contour = 0; contour < cur_char->num_contours; contour++)
 		{
+			cur_contour = &(cur_char->contours[contour]);
+
 			gluTessBeginContour(glu_tess);
 
-			cur_contour = &(cur_char->contours[character]);
-
 			numPoints = cur_contour->num_points;
+
+			// Iterate over points in contour
+			// See the freetype2 docs for outline curve decomposition: http://www.freetype.org/freetype2/docs/glyphs/glyphs-6.html
+			// Our invariant inside the while is that at the top of the loop, the point type is always ON, so we're
+			// always starting a new curve section at the top of the loop.
 			i = 0;
 
 			while (i < numPoints)
@@ -267,7 +272,7 @@ refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, dou
 				if (get_point(cur_contour, i+1).flags & kPointTypeOn)
 				{
 					// On - On (straight line)
-					tessobj_add_contour_vertex(&tess_objects[contour], vec3_from_point(get_point(cur_contour, i)), refonter_zero_vertex());
+					tessobj_add_contour_vertex(current_tesselator, vec3_from_point(get_point(cur_contour, i)), refonter_zero_vertex());
 					i += 1;
 				}
 				else if (get_point(cur_contour, i+1).flags & kPointTypeOffConic)
@@ -280,8 +285,7 @@ refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, dou
 						endPoint = refonter_vertex_mid(vec3_from_point(get_point(cur_contour, i+1)), vec3_from_point(get_point(cur_contour, i+2)));
 						control = vec3_from_point(get_point(cur_contour, i+1));
 
-						tessobj_add_bezier(&tess_objects[contour], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
-					//refonter_tesselation_object_add_vertex(&t[ch], curPoint, refonter_vec3());
+						tessobj_add_bezier(current_tesselator, curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
 
 						curPoint = endPoint;
 
@@ -291,15 +295,13 @@ refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, dou
 					// On - Off conic - On
 					control = vec3_from_point(get_point(cur_contour, i+1));
 					endPoint = vec3_from_point(get_point(cur_contour, i+2));
-					tessobj_add_bezier(&tess_objects[contour], curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
-//					refonter_tesselation_object_add_vertex(&t[ch], curPoint, refonter_vec3());
+					tessobj_add_bezier(current_tesselator, curPoint, refonter_quadratic_control_to_cubic(curPoint, control), refonter_quadratic_control_to_cubic(endPoint, control), endPoint);
 					i += 2;
 				}
 				else if (get_point(cur_contour, i+1).flags & kPointTypeOffCubic)
 				{
 					// On - Off cubic - Off cubic - On
-					//refonter_tesselation_object_add_vertex(&t[ch], refonter_vec_from_point(get_point(contour, i+0)), refonter_vec3());
-					tessobj_add_bezier(&tess_objects[contour], vec3_from_point(get_point(cur_contour, i+0)), vec3_from_point(get_point(cur_contour, i+1)), vec3_from_point(get_point(cur_contour, i+2)), vec3_from_point(get_point(cur_contour, i+3)));
+					tessobj_add_bezier(current_tesselator, vec3_from_point(get_point(cur_contour, i+0)), vec3_from_point(get_point(cur_contour, i+1)), vec3_from_point(get_point(cur_contour, i+2)), vec3_from_point(get_point(cur_contour, i+3)));
 					i += 4;
 				}
 			}
