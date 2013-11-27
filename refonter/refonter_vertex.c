@@ -35,10 +35,3 @@ refonter_vec3 refonter_vertex_mid(const refonter_vec3 p1, const refonter_vec3 p2
 	res.z /= 2;
 	return res;
 }
-
-void refonter_vertex_zero(refonter_vec3 p)
-{
-	p.x = 0;
-	p.y = 0;
-	p.z = 0;
-}
