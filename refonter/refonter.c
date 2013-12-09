@@ -48,10 +48,10 @@ refonter_font* refonter_init_blob(unsigned char* blob)
 
 double refonter_bezier1(double t, double start, double control1, double control2, double end)
 {
-    return              start * (1.0 - t) * (1.0 - t)  * (1.0 - t) 
-           + 3.0 *   control1 * (1.0 - t) * (1.0 - t)  * t 
-           + 3.0 *   control2 * (1.0 - t) * t          * t
-           +              end * t         * t          * t;
+	return              start * (1.0 - t) * (1.0 - t)  * (1.0 - t) 
+	       + 3.0 *   control1 * (1.0 - t) * (1.0 - t)  * t 
+	       + 3.0 *   control2 * (1.0 - t) * t          * t
+	       +              end * t         * t          * t;
 }
 
 refonter_vec3 refonter_bezier3(double t, const refonter_vec3 start, const refonter_vec3 control1, const refonter_vec3 control2, const refonter_vec3 end)
