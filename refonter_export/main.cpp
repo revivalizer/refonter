@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	unsigned int blob_size;
 
 	// Create font blob and prepare for export
-	refonter_status status = refonter_create_font_blob(&blob, &blob_size, font_path, chars, point_size*64, resolution);
+	refonter_status status = refonter_create_font_blob(&blob, &blob_size, font_path, chars, point_size*kRefonterSubdivision, resolution);
 
 	if (status==kStatusOk)
 	{
