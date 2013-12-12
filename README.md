@@ -30,7 +30,8 @@ refonter has three parts:
 
 3. The missing part: drawing code  
 
-   Refonter currently has no mechanism for drawing the triangles, you must provide that yourself. However, it's not complicated to do. refonter doesn't provide a mechanism for it, because there are many different ways to do it, and it must fit into your drawing pipeline. An example for OpenGL 3.3 is provided.
+   Refonter currently has no mechanism for drawing the triangles, you must provide that yourself. However, it's not complicated to do. refonter doesn't provide a mechanism for it, because there are many different ways to do it, and it must fit into your drawing pipeline. An example for OpenGL 3.3 is provided here: https://gist.github.com/revivalizer/7937396
+
 
 Who wrote this?
 -----------------
