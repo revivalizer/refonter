@@ -1,0 +1,5 @@
+*.opensdf
+*.sdf
+*.suo
+*.vcxproj.user
+libs/freetype/src/
