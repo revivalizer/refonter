@@ -3,3 +3,5 @@
 *.suo
 *.vcxproj.user
 libs/freetype/src/
+*bin/
+*obj/
