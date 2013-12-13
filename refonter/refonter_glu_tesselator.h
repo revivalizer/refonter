@@ -30,7 +30,7 @@ typedef struct
 
 } refonter_tesselation_object;
 
-refonter_tesselation_object* refonter_glu_tesselate(refonter_font* p_font, refonter_tesselation_object* tess_objs, double flatness_tolerance);
+void refonter_glu_tesselate(refonter_font* p_font, refonter_tesselation_object* tess_objs, double flatness_tolerance);
 
 #ifdef __cplusplus
 }

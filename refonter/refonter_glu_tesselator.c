@@ -202,7 +202,7 @@ static void __stdcall callback_combine(GLdouble coords[3],
 // Just a simple function to wrap the point index around the contour
 static const refonter_point get_point(refonter_contour* contour, uint32_t i) { return (contour->points[i % contour->num_points]); }
 
-refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, refonter_tesselation_object* tess_objects, double flatness_tolerance)
+void refonter_glu_tesselate(refonter_font* cur_font, refonter_tesselation_object* tess_objects, double flatness_tolerance)
 {
 	unsigned int character, contour;
 	refonter_char* cur_char;
@@ -297,6 +297,4 @@ refonter_tesselation_object* refonter_glu_tesselate(refonter_font* cur_font, ref
 	}
 
 	gluDeleteTess(glu_tess);
-
-	return tess_objects;
 }
