@@ -35,7 +35,7 @@ refonter has three parts:
 
 Who wrote this?
 -----------------
-Hi, I am Ralph Brorsen aka revivalizer. In the demoscene I am also known as revival/fnuque^eventide. You can contact me at ralph@revivalizer.dk, or on twitter @revivalizer.
+Hi, I am Ralph Brorsen aka revivalizer. In the demoscene I am also known as revival/fnuque.
 
 Limitations
 ------------------

@@ -77,7 +77,7 @@ int main(int argc, char *argv[])
 		transform_pointers_to_offsets(p_font);
 
 		// Append extensions to path
-		char* extended_path = new char[strlen(font_path+10)];
+		char* extended_path = new char[strlen(font_path)+100];
 		strcpy(extended_path, font_path);
 
 		// Write binary file
